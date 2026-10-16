@@ -42,6 +42,8 @@ final class UserService
         $data = $this->validate($data, 'create');
         $data['password'] = hashPassword($data['password']);
 
+        unset($data['password_repeat']);
+
         return $this->db->transaction(function () use ($data) {
             $user = null;
 

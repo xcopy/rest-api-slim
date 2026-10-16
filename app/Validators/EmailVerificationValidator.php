@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Validators;
 
+use App\Assert\Assert;
+use Assert\LazyAssertion;
 use InvalidArgumentException;
 
 final class EmailVerificationValidator extends Validator
@@ -11,12 +13,16 @@ final class EmailVerificationValidator extends Validator
     /**
      * @inheritDoc
      */
-    protected function rules(string $scenario, array $context = []): array
+    protected function lazyAssertion(array $data, string $scenario, array $context = []): LazyAssertion
     {
-        return match ($scenario) {
-            'send' => ['email' => 'email'],
-            'verify' => ['token' => 'string'],
+        $lazyAssertion = Assert::lazy();
+
+        match ($scenario) {
+            'send' => $this->assertEmail($lazyAssertion, $data['email'] ?? null),
+            'verify' => $this->assertToken($lazyAssertion, $data['token'] ?? null),
             default => throw new InvalidArgumentException(sprintf('Unsupported scenario: %s', $scenario)),
         };
+
+        return $lazyAssertion;
     }
 }

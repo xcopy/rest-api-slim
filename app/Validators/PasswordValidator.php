@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Validators;
 
+use App\Assert\Assert;
+use Assert\LazyAssertion;
 use InvalidArgumentException;
 
 final class PasswordValidator extends Validator
@@ -11,22 +13,41 @@ final class PasswordValidator extends Validator
     /**
      * @inheritDoc
      */
-    protected function rules(string $scenario, array $context = []): array
+    protected function lazyAssertion(array $data, string $scenario, array $context = []): LazyAssertion
     {
-        $rules = [
-            'new_password' => 'string|min:8',
-            'new_password_repeat' => 'matchesvalueof<new_password>',
-        ];
+        $lazyAssertion = Assert::lazy();
 
-        return match ($scenario) {
-            'forgot' => ['email' => 'email'],
-            'reset' => [
-                'token' => 'string',
-            ] + $rules,
-            'change' => [
-                'current_password' => 'string|min:1',
-            ] + $rules,
-            default => throw new InvalidArgumentException(sprintf('Unsupported scenario: %s', $scenario)),
-        };
+        if ($scenario === 'forgot') {
+            $this->assertEmail($lazyAssertion, $data['email'] ?? null);
+            return $lazyAssertion;
+        }
+
+        if ($scenario === 'reset') {
+            $this->assertToken($lazyAssertion, $data['token'] ?? null);
+        } elseif ($scenario === 'change') {
+            $this->assertPassword(
+                $lazyAssertion,
+                $data['current_password'] ?? null,
+                'current_password'
+            );
+        } else {
+            throw new InvalidArgumentException(sprintf('Unsupported scenario: %s', $scenario));
+        }
+
+        $this->assertPassword(
+            $lazyAssertion,
+            $data['new_password'] ?? null,
+            'new_password'
+        );
+        $lazyAssertion->minLength(8);
+
+        $this->assertPassword(
+            $lazyAssertion,
+            $data['new_password_repeat'] ?? null,
+            'new_password_repeat'
+        );
+        $lazyAssertion->same($data['new_password'] ?? null);
+
+        return $lazyAssertion;
     }
 }

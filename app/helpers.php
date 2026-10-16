@@ -90,3 +90,14 @@ if (!function_exists('checkPassword')) {
         return password_verify($password, $hash);
     }
 }
+
+if (!function_exists('humanize')) {
+    function humanize(string $value): string
+    {
+        $value = preg_replace('/(?<=\w)([A-Z])/', '_$1', $value);
+        $value = str_replace(['_', '-'], ' ', $value);
+        $value = trim(preg_replace('/\s+/', ' ', $value));
+
+        return ucfirst(strtolower($value));
+    }
+}

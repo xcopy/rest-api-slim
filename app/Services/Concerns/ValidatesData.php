@@ -29,9 +29,7 @@ trait ValidatesData
     {
         $validator = $this->getValidator();
 
-        $data = $validator->validate($data, $scenario, $context);
-
-        if ($data === false) {
+        if ($validator->validate($data, $scenario, $context) === false) {
             throw new UnprocessableEntityException($validator->getErrors());
         }
 
