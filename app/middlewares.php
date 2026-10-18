@@ -12,6 +12,7 @@ use App\Http\JsonResponse;
 use App\Middlewares\CorsMiddleware;
 use App\Middlewares\RateLimitMiddleware;
 use App\Middlewares\TrimInputMiddleware;
+use DI\Container;
 use Middlewares\TrailingSlash;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\RotatingFileHandler;
@@ -21,13 +22,16 @@ use Slim\App;
 use Slim\Middleware\ContentLengthMiddleware;
 
 return function (App $app) {
+    /** @var Container $container */
+    $container = $app->getContainer();
+
     // Order matters: LIFO (Last-In, First-Out)
     $app->add(TrimInputMiddleware::class);
     $app->addBodyParsingMiddleware();
     $app->addRoutingMiddleware();
     $app->add(ContentLengthMiddleware::class);
     $app->add(TrailingSlash::class);
-    $app->add(RateLimitMiddleware::class);
+    $app->add($container->make(RateLimitMiddleware::class, ['bucket' => 'global']));
 
     $isProduction = config('app.env') === 'production';
 
