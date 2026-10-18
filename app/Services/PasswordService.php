@@ -13,8 +13,6 @@ use App\Repositories\PasswordResetTokenRepository;
 use App\Repositories\UserRepository;
 use App\Services\Concerns\ValidatesData;
 use App\Validators\PasswordValidator;
-use DateInterval;
-use DateTimeImmutable;
 use DI\Attribute\Inject;
 use Slim\Interfaces\RouteParserInterface;
 
@@ -109,23 +107,21 @@ final class PasswordService
             throw new BadRequestException('The password reset token is invalid or expired');
         }
 
-        return $this->db->transaction(function () use ($data, $where, $resetToken) {
+        $userId = $resetToken['user_id'];
+
+        return $this->db->transaction(function () use ($data, $where, $userId) {
             $consumed = $this->repository->delete($where);
 
             if ($consumed !== 1) {
                 throw new BadRequestException('The password reset token is invalid or expired');
             }
 
-            if (!$this->updatePassword($resetToken['user_id'], $data['new_password'])) {
-                throw new NotFoundException('User with this password reset token not found');
-            }
-
-            return true;
+            return $this->updatePassword($userId, $data['new_password']);
         });
     }
 
     /** @param array<string, mixed> $data */
-    public function change(int $userId, array $data): void
+    public function change(int $userId, array $data): bool
     {
         $user = $this->userRepository
             ->addColumns(['password'])
@@ -149,34 +145,14 @@ final class PasswordService
             throw new BadRequestException('New password must be different from the current password');
         }
 
-        $passwordChangedAt = $user['password_changed_at'];
-        $cooldownCutoff = now()->sub(new DateInterval('PT24H'));
-        $cooldownException = new BadRequestException('Password can only be changed once every 24 hours');
-
-        if ($passwordChangedAt !== null && parseDateTime($passwordChangedAt) > $cooldownCutoff) {
-            throw $cooldownException;
-        }
-
-        $updated = $this->db->transaction(function () use ($userId, $newPassword, $cooldownCutoff) {
-            return $this->updatePassword($userId, $newPassword, $cooldownCutoff);
+        return $this->db->transaction(function () use ($userId, $newPassword) {
+            return $this->updatePassword($userId, $newPassword);
         });
-
-        if (!$updated) {
-            throw new $cooldownException();
-        }
     }
 
-    protected function updatePassword(
-        int $userId,
-        string $password,
-        ?DateTimeImmutable $changedBefore = null
-    ): bool {
+    protected function updatePassword(int $userId, string $password): bool
+    {
         $now = now(true);
-        $where = ['id' => $userId];
-
-        if ($changedBefore !== null) {
-            $where['(password_changed_at IS NULL OR password_changed_at <= ?)'] = $changedBefore->format(DATE_FORMAT_DB);
-        }
 
         $result = $this->userRepository
             ->update(
@@ -185,7 +161,7 @@ final class PasswordService
                     'password_changed_at' => $now,
                     'updated_at' => $now,
                 ],
-                $where
+                ['id' => $userId]
             );
 
         if ($result !== 1) {
