@@ -28,7 +28,7 @@ To run Pest without preparing the testing database, use `composer test:pest` aft
 ## Endpoints
 
 - `GET /health`
-- `POST /auth/register` with `{"email":"user@example.com","password":"...","first_name":"...","last_name":"..."}`
+- `POST /auth/register` with `{"email":"user@example.com","password":"...","password_repeat":"...","first_name":"...","last_name":"..."}`
 - `POST /auth/login`, `POST /auth/logout`, `POST /auth/logout-all`
 - `POST /email-verification/send` — authenticated
 - `POST /email-verification/verify` with `{"token":"<token from email>"}`
@@ -38,6 +38,8 @@ To run Pest without preparing the testing database, use `composer test:pest` aft
 - `/user` — authenticated: `GET` to view your own account, `POST` or `PATCH` to update it, and `DELETE` to delete it
 
 Send the access token returned by login as a bearer token in the `Authorization` header for protected endpoints: `Authorization: Bearer <access_token>`.
+
+Registration requires `password_repeat` to match `password`; passwords must be at least 8 characters. First and last names must be 3–100 characters, using only ASCII letters, digits, and hyphens. Email addresses must be valid and unique. The password confirmation is used only for validation and is not stored.
 
 New users must verify their email before login. Verification tokens expire according to `EMAIL_VERIFICATION_TTL`; requesting a replacement token invalidates earlier tokens. Changing a user's email address requires verification again and revokes that user's existing access tokens. The email-verification send endpoint returns `404` when the account does not exist and `409` when its email address is already verified.
 
