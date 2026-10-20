@@ -3,24 +3,14 @@
 declare(strict_types=1);
 
 $db = require __DIR__ . '/db.php';
-$production = $db['production'];
-
-$sqlite = fn(string $env) => [
-    'adapter' => 'sqlite',
-    'name' => str_replace('.sqlite3', '', $db[$env]['database']),
-];
 
 return [
-    'local' => $sqlite('local'),
-    'testing' => $sqlite('testing'),
-    'production' => [
-        'adapter' => 'mysql',
-        'name' => $production['database'],
-        'host' => $production['hostname'],
-        'port' => $production['port'],
-        'user' => $production['username'],
-        'pass' => $production['password'],
-        'charset' => $production['charset'],
-        'driver_options' => $production['driver_options'],
-    ],
+    'adapter' => strtolower(str_replace('Pdo_', '', $db['driver'])),
+    'name' => $db['database'],
+    'host' => $db['hostname'],
+    'port' => $db['port'],
+    'user' => $db['username'],
+    'pass' => $db['password'],
+    'charset' => $db['charset'],
+    'driver_options' => $db['driver_options'],
 ];

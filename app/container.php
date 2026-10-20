@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Db\Adapter;
 use App\Mailer\FileTransport;
 use DI\ContainerBuilder;
-use Laminas\Db\Adapter\Adapter as BaseAdapter;
 use Laminas\Db\Sql\Sql;
 use Predis\Client;
 use Predis\ClientInterface;
@@ -14,25 +13,7 @@ use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mailer\Transport;
 
 $definitions = [
-    MailerInterface::class => function () {
-        $transport = in_array(config('app.env'), ['local', 'testing'])
-            ? new FileTransport(APP_BASE_PATH . '/logs/mail')
-            : Transport::fromDsn(config('mail.dsn'));
-
-        return new Mailer($transport);
-    },
-    Adapter::class => function () {
-        $env = config('app.env');
-        $adapter = new Adapter(config('db.' . $env));
-
-        if (in_array($env, ['local', 'testing'])) {
-            $adapter->query('PRAGMA foreign_keys = ON;')->execute();
-        }
-
-        return $adapter;
-    },
-    BaseAdapter::class => \DI\get(Adapter::class),
-    Sql::class => fn(Adapter $db) => new Sql($db),
+    Adapter::class => fn() => new Adapter(config('db')),
     ClientInterface::class => function () {
         $config = config('redis');
         $parameters = [
@@ -58,6 +39,14 @@ $definitions = [
             'prefix' => $config['prefix'],
         ]);
     },
+    MailerInterface::class => function () {
+        $transport = in_array(config('app.env'), ['local', 'testing'])
+            ? new FileTransport(APP_BASE_PATH . '/logs/mail')
+            : Transport::fromDsn(config('mail.dsn'));
+
+        return new Mailer($transport);
+    },
+    Sql::class => fn(Adapter $db) => new Sql($db),
 ];
 
 $containerBuilder = new ContainerBuilder();

@@ -15,6 +15,6 @@ return [
     'environments' => [
         'default_migration_table' => 'migrations',
         'default_environment' => $app['env'],
-        ...$phinx,
+        $app['env'] => $phinx,
     ],
 ];
