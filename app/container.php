@@ -21,28 +21,8 @@ $definitions = [
     Adapter::class => fn() => new Adapter(config('db')),
     ClientInterface::class => function () {
         $config = config('redis');
-        $parameters = [
-            'scheme' => 'tcp',
-            'host' => $config['host'],
-            'port' => $config['port'],
-            'timeout' => $config['timeout'],
-            'read_write_timeout' => $config['timeout'],
-            'database' => $config['database'],
-        ];
 
-        $username = $config['username'];
-        if ($username !== null && $username !== '') {
-            $parameters['username'] = $username;
-        }
-
-        $password = $config['password'];
-        if ($password !== null && $password !== '') {
-            $parameters['password'] = $password;
-        }
-
-        return new Client($parameters, [
-            'prefix' => $config['prefix'],
-        ]);
+        return new Client($config['parameters'], $config['options']);
     },
     LoggerInterface::class => function () {
         $stream = new RotatingFileHandler(
