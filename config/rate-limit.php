@@ -13,6 +13,7 @@ return [
             'limit' => 120,
             'window' => 60,
             'by' => ['ip'],
+            'on_failure' => 'open',
         ],
         // auth
         'auth.register' => [

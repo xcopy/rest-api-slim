@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Slim\Exception\HttpTooManyRequestsException;
 use Throwable;
@@ -20,6 +21,9 @@ final class RateLimitMiddleware implements MiddlewareInterface
 {
     #[Inject]
     private ClientInterface $redis;
+
+    #[Inject]
+    private LoggerInterface $logger;
 
     public function __construct(private readonly string $bucket = 'default') {}
 
@@ -50,7 +54,13 @@ final class RateLimitMiddleware implements MiddlewareInterface
                 $pipe->expire($key, $resetAfter);
             });
         } catch (Throwable $e) {
-            throw new RuntimeException('Rate limit store failure: ' . $e->getMessage());
+            $this->logger->error('Rate limiter failure', ['bucket' => $this->bucket, 'exception' => $e]);
+
+            if (($config['on_failure'] ?? 'closed') === 'open') {
+                return $handler->handle($request);
+            }
+
+            throw $e;
         }
 
         if (!is_int($hits)) {
