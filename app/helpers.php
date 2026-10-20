@@ -2,44 +2,38 @@
 
 declare(strict_types=1);
 
-if (!function_exists('config')) {
+if (! function_exists('config')) {
     function config(string $key, mixed $default = null): mixed
     {
-        static $values = null;
+        static $cache = [];
 
-        if ($values === null) {
-            $values = [];
-            $files = glob(APP_BASE_PATH . '/config/*.php');
+        $baseDir = APP_BASE_PATH . '/config';
+        $segments = explode('.', $key);
 
-            if ($files === false) {
-                throw new RuntimeException('Unable to load configuration files');
+        // Find the longest prefix that maps to an existing file
+        for ($i = count($segments); $i > 0; $i--) {
+            $file = $baseDir . '/' . implode('/', array_slice($segments, 0, $i)) . '.php';
+
+            if (! is_file($file)) {
+                continue;
             }
 
-            foreach ($files as $file) {
-                $value = require $file;
-                if (!is_array($value)) {
-                    throw new RuntimeException(sprintf('Configuration file "%s" must return an array', $file));
-                }
+            $data = $cache[$file] ??= require $file;
+            $rest = array_slice($segments, $i);
 
-                $values[basename($file, '.php')] = $value;
-            }
-        }
-
-        $value = $values;
-
-        foreach (explode('.', $key) as $segment) {
-            if ($segment === '' || !is_array($value) || !array_key_exists($segment, $value)) {
-                if (func_num_args() > 1) {
+            // Walk the remaining segments into the array
+            foreach ($rest as $segment) {
+                if (! is_array($data) || ! array_key_exists($segment, $data)) {
                     return $default;
                 }
 
-                throw new InvalidArgumentException(sprintf('Configuration key "%s" was not found.', $key));
+                $data = $data[$segment];
             }
 
-            $value = $value[$segment];
+            return $data;
         }
 
-        return $value;
+        return $default;
     }
 }
 
