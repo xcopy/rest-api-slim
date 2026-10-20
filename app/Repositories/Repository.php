@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use DI\Attribute\Inject;
+use InvalidArgumentException;
 use Laminas\Db\Sql\Sql;
 use RuntimeException;
 
@@ -45,14 +46,26 @@ abstract class Repository
         ]));
     }
 
-    /** @param array<string, mixed> $where
-     *  @return list<array<string, mixed>>
+    /**
+     * @param array<string, mixed> $where
+     * @return list<array<string, mixed>>
      */
-    public function findAll(array $where = []): array
+    public function findAll(array $where = [], int $limit = 50, int $offset = 0): array
     {
+        if ($limit < 1 || $limit > 100) {
+            throw new InvalidArgumentException('Result limit must be between 1 and 100');
+        }
+
+        if ($offset < 0) {
+            throw new InvalidArgumentException('Result offset cannot be negative');
+        }
+
         $select = $this->sql
             ->select($this->getTable())
-            ->columns($this->columns());
+            ->columns($this->columns())
+            ->order('id ASC')
+            ->limit($limit)
+            ->offset($offset);
 
         if ($where !== []) {
             $select->where($where);
