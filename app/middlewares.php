@@ -14,10 +14,7 @@ use App\Middlewares\RateLimitMiddleware;
 use App\Middlewares\TrimInputMiddleware;
 use DI\Container;
 use Middlewares\TrailingSlash;
-use Monolog\Formatter\LineFormatter;
-use Monolog\Handler\RotatingFileHandler;
-use Monolog\Level;
-use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 use Slim\App;
 use Slim\Middleware\ContentLengthMiddleware;
 
@@ -33,30 +30,15 @@ return function (App $app) {
     $app->add(TrailingSlash::class);
     $app->add($container->make(RateLimitMiddleware::class, ['bucket' => 'global']));
 
-    $isProduction = config('app.env') === 'production';
-
-    $stream = new RotatingFileHandler(
-        APP_BASE_PATH . '/logs/app.log',
-        maxFiles: 14, // two weeks
-        level: $isProduction ? Level::Warning : Level::Debug
-    );
-    $stream->setFormatter(new LineFormatter(
-        "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",
-        DATE_FORMAT_LOG,
-        allowInlineLineBreaks: true,
-        ignoreEmptyContextAndExtra: true
-    ));
-    $logger = (new Logger('app'))->pushHandler($stream);
-
     $errorHandler = new ErrorHandler(
         $app->getCallableResolver(),
         $app->getResponseFactory(),
-        $logger
+        $app->getContainer()->get(LoggerInterface::class)
     );
     $errorHandler->forceContentType('application/json');
 
     $errorMiddleware = $app->addErrorMiddleware(
-        displayErrorDetails: !$isProduction,
+        displayErrorDetails: config('app.env') !== 'production',
         logErrors: true,
         logErrorDetails: true
     );
