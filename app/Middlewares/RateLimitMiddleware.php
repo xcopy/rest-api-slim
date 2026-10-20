@@ -7,34 +7,19 @@ namespace App\Middlewares;
 use App\Handlers\ErrorHandler;
 use DI\Attribute\Inject;
 use Predis\ClientInterface;
+use Predis\Pipeline\Pipeline;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use RuntimeException;
 use Slim\Exception\HttpTooManyRequestsException;
+use Throwable;
 
 final class RateLimitMiddleware implements MiddlewareInterface
 {
     #[Inject]
     private ClientInterface $redis;
-
-    private const LUA = <<<'LUA'
-local current = tonumber(redis.call('GET', KEYS[1]) or '0')
-local limit = tonumber(ARGV[1])
-
-if current >= limit then
-    return -1
-end
-
-current = redis.call('INCR', KEYS[1])
-
-if current == 1 then
-    redis.call('EXPIRE', KEYS[1], ARGV[2])
-end
-
-return current
-LUA;
 
     public function __construct(private readonly string $bucket = 'default') {}
 
@@ -59,14 +44,21 @@ LUA;
             $windowStart
         );
 
-        $requestCount = $this->redis->eval(self::LUA, 1, $key, (string) $limit, (string) $resetAfter);
-
-        if (!is_int($requestCount)) {
-            throw new RuntimeException('Unable to update the API rate limit counter in Redis');
+        try {
+            [$hits] = $this->redis->pipeline(function (Pipeline $pipe) use ($key, $resetAfter) {
+                $pipe->incr($key);
+                $pipe->expire($key, $resetAfter);
+            });
+        } catch (Throwable $e) {
+            throw new RuntimeException('Rate limit store failure: ' . $e->getMessage());
         }
 
-        $blocked = $requestCount === -1;
-        $remaining = $blocked ? 0 : max(0, $limit - $requestCount);
+        if (!is_int($hits)) {
+            throw new RuntimeException('Unexpected response from rate limit store');
+        }
+
+        $blocked = $hits > $limit;
+        $remaining = max(0, $limit - $hits);
 
         $headers = [
             'RateLimit-Limit' => (string) $limit,
