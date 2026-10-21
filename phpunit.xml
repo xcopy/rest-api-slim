@@ -13,7 +13,5 @@
     </testsuites>
     <php>
         <env name="APP_ENV" value="testing" force="true"/>
-        <env name="RATE_LIMIT_LIMIT" value="1000" force="true"/>
-        <env name="RATE_LIMIT_WINDOW" value="100" force="true"/>
     </php>
 </phpunit>

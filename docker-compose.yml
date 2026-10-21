@@ -1,0 +1,57 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Selects .env.local (see app/bootstrap.php)
+      APP_ENV: local
+      # Real environment variables take precedence over the env file (phpdotenv does not overwrite them).
+      DB_HOSTNAME: mysql
+      DB_PORT: "3306"
+      DB_USERNAME: app
+      DB_PASSWORD: secret
+      # Adjust the Redis variable names to match your .env.dist.
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    volumes:
+      - .:/app
+      # Keep vendor inside the container so the bind mount doesn't hide it
+      - vendor:/app/vendor
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    # These MYSQL_* variables configure the MySQL image itself, not your app.
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: app
+      MYSQL_PASSWORD: secret
+    ports:
+      # host port 3307 to avoid clashing with a local MySQL
+      - "3307:3306"
+    volumes:
+      - mysql:/var/lib/mysql
+      # Runs once, on first start of an empty volume
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  vendor:
+  mysql:

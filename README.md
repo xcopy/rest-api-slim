@@ -4,16 +4,33 @@ Slim 4 REST API with token authentication, email verification, CORS, and Redis-b
 
 ## Setup
 
-Requirements: PHP 8.3+, Composer, and Redis.
+### Docker
+
+```sh
+docker compose up --build -d
+docker compose exec app composer db:fresh
+docker compose exec app composer db:seed
+```
+
+The API is available at <http://localhost:8000>. Compose starts the PHP app, MySQL, and Redis. The app connects to the `mysql` and `redis` services; MySQL is also available from the host on port `3307`. On its first start with an empty data volume, MySQL creates the application, local, and testing databases. The source is bind-mounted into the app container, while Composer dependencies and MySQL data use named volumes.
+
+Compose sets `APP_ENV=local` and database/Redis connection values for the app. Adjust these values in `docker-compose.yml` for your local setup. The bundled PHP development server is not intended for production.
+
+### Native
+
+Requirements: PHP 8.3+, Composer, MySQL, and Redis.
 
 ```sh
 composer install
-cp .env.dist .env
-composer db:fresh && composer db:seed
-php -S localhost:8000 -t public
+cp .env.dist .env.local
+APP_ENV=local composer db:fresh
+APP_ENV=local composer db:seed
+APP_ENV=local php -S localhost:8000 -t public
 ```
 
-The local environment uses SQLite at `db/db-local.sqlite3`. Seeding replaces the sample users and role/permission assignments. Configure Redis and other settings in `.env`. In the local environment, sent emails are written as `.eml` files to `logs/mail`; other environments use the transport configured by `MAILER_DSN`.
+Configure the MySQL and Redis connection values in `.env.local` for your services. Seeding replaces the sample users and role/permission assignments. In the local environment, sent emails are written as `.eml` files to `logs/mail`; other environments use the transport configured by `MAILER_DSN`.
+
+`app/bootstrap.php` selects the environment file before loading it: `APP_ENV=local` loads `.env.local`, `APP_ENV=testing` loads `.env.testing`, and `APP_ENV=production` loads `.env`. If `APP_ENV` is not set in the process, it defaults to `production`. Environment variables set by the process or Docker take precedence over values in the selected file.
 
 ## Tests
 
@@ -45,4 +62,4 @@ New users must verify their email before login. Verification tokens expire accor
 
 Changing a password requires the current password, is limited to once every 24 hours, and revokes all of the user's existing access tokens. Email-verification and password-reset tokens expire according to `EMAIL_VERIFICATION_TTL` and `PASSWORD_RESET_TTL`, respectively; requesting a replacement token invalidates earlier tokens. Password-reset requests return `404` when the account does not exist. Resetting a password consumes the token and revokes all of the user's existing access tokens. In the local environment, issued verification and password-reset tokens are also included in their responses.
 
-Database migrations and seeders are managed with Phinx. Set `APP_ENV=production` and configure the `MYSQL_*` variables in `.env` to use MySQL.
+Database migrations and seeders are managed with Phinx. Configure `DB_*` in the selected environment file or process environment to connect to MySQL.
