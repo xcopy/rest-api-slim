@@ -14,6 +14,6 @@ return [
         'password' => getenv('REDIS_PASSWORD'),
     ],
     'options' => [
-        'prefix' => getenv('REDIS_PREFIX') ?: 'rest-api-example:',
+        'prefix' => getenv('REDIS_PREFIX') ?: 'rest-api-slim:',
     ],
 ];

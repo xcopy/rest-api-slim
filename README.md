@@ -1,4 +1,4 @@
-# REST API Example
+# REST API Slim
 
 Slim 4 REST API with token authentication, email verification, CORS, and Redis-backed rate limiting.
 

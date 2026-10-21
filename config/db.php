@@ -6,7 +6,7 @@ $driver = getenv('DB_DRIVER') ?: 'Pdo_Mysql';
 
 return [
     'driver' => $driver,
-    'database' => getenv('DB_DATABASE') ?: 'rest_api_example',
+    'database' => getenv('DB_DATABASE') ?: 'rest_api_slim',
     'hostname' => getenv('DB_HOSTNAME') ?: '127.0.0.1',
     'port' => (int) (getenv('DB_PORT') ?: 3306),
     'username' => getenv('DB_USERNAME') ?: '',
